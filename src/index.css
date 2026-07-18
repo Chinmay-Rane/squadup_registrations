@@ -164,34 +164,13 @@ html, body, #root {
   background: rgba(255, 45, 85, 0.5);
 }
 
-/* Orbit Animations for Planetary Drift */
-@keyframes orbit-rotate {
-  from {
-    transform: translate(-50%, -50%) rotate(0deg);
+/* Floating animation for static gateway words */
+@keyframes word-float {
+  0%, 100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
   }
-  to {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-@keyframes counter-rotate {
-  from {
-    transform: rotate(360deg);
-  }
-  to {
-    transform: rotate(0deg);
+  50% {
+    transform: translateY(-8px) translateX(2px) rotate(0.6deg);
   }
 }
 
-.orbit-parent {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-}
-
-.orbit-child {
-  position: absolute;
-  white-space: nowrap;
-}

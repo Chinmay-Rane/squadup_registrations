@@ -138,7 +138,7 @@ export default function LogoGateway({ onEnterApp }) {
   return (
     <div className="relative w-full h-screen overflow-hidden bg-transparent flex items-center justify-center">
       
-      {/* Orbiting Concentric Symmetrical Words */}
+      {/* Floating Concentric Symmetrical Words */}
       <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden select-none">
         {FLOATING_WORDS.map((word, idx) => {
           // If clicked, they fade out cleanly in place instead of merging together
@@ -170,30 +170,29 @@ export default function LogoGateway({ onEnterApp }) {
             );
           }
 
-          // GPU-Accelerated Orbiting parent and counter-rotating child
-          const offsetDelay = -((word.initialAngle / 360) * word.duration);
+          // Calculate static positions based on initialAngle, radiusX, and radiusY
+          const angleRad = (word.initialAngle * Math.PI) / 180;
+          const x = Math.cos(angleRad) * parseFloat(word.radiusX);
+          const y = Math.sin(angleRad) * parseFloat(word.radiusY);
+
+          // Stagger the floating animation so they don't float in perfect sync
+          const floatDelay = -((word.initialAngle / 360) * 6).toFixed(2);
 
           return (
             <div
               key={idx}
-              className="orbit-parent"
+              className="absolute top-1/2 left-1/2 pointer-events-none"
               style={{
-                animation: `orbit-rotate ${word.duration}s linear infinite`,
-                animationDelay: `${offsetDelay}s`
+                transform: `translate(calc(-50% + ${x}vw), calc(-50% + ${y}vh))`,
               }}
             >
               <div
-                className="orbit-child"
                 style={{
-                  transform: `translate(${word.radiusX}, ${word.radiusY})`,
+                  animation: `word-float 6s ease-in-out infinite`,
+                  animationDelay: `${floatDelay}s`
                 }}
               >
-                {/* Counter-rotation to keep the text upright and horizontal */}
                 <div
-                  style={{
-                    animation: `counter-rotate ${word.duration}s linear infinite`,
-                    animationDelay: `${offsetDelay}s`
-                  }}
                   className={
                     word.isPrimary
                       ? "text-[12px] md:text-[14px] font-black uppercase tracking-[0.45em] text-white font-sans drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]"
