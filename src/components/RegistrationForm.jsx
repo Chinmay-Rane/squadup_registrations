@@ -124,7 +124,7 @@ export default function RegistrationForm() {
             {/* Minimal Header */}
             <motion.div variants={itemVariants} className="mb-8 text-left border-b border-white/5 pb-4">
               <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase">
-                Join SquadUP
+                Join SquadUP ( Phase 0 )
               </h2>
               {/* Pillar Subheadings */}
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
