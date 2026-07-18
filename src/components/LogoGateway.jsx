@@ -6,27 +6,23 @@ import logoImg from '../assets/squadup.png';
 // Grouped in 4 tight concentric orbits (max radius 23vw/vh) to ensure they are always in frame,
 // with 2 opposing text planets on each orbit to balance the alignment symmetrically.
 // isPrimary: true highlights 'esports', 'technical', and 'game development' for stronger visual hierarchy.
+// Spaced out random landing page text elements (will be positioned dynamically without overlapping)
+// isPrimary: true highlights 'esports', 'technical', and 'game development' for stronger visual hierarchy.
 const FLOATING_WORDS = [
-  // Orbit 1: Inner (radius: 11vw / 11vh)
-  { text: 'esports', radiusX: '11vw', radiusY: '11vh', initialAngle: 0, duration: 45, isPrimary: true },
-  { text: 'technical', radiusX: '11vw', radiusY: '11vh', initialAngle: 180, duration: 45, isPrimary: true },
-
-  // Orbit 2: Middle-Inner (radius: 15vw / 15vh)
-  { text: 'production', radiusX: '15vw', radiusY: '15vh', initialAngle: 60, duration: 45 },
-  { text: 'design', radiusX: '15vw', radiusY: '15vh', initialAngle: 240, duration: 45 },
-
-  // Orbit 3: Middle-Outer (radius: 19vw / 19vh)
-  { text: 'game development', radiusX: '19vw', radiusY: '19vh', initialAngle: 120, duration: 45, isPrimary: true },
-  { text: 'content creation', radiusX: '19vw', radiusY: '19vh', initialAngle: 300, duration: 45 },
-
-  // Orbit 4: Outer (radius: 23vw / 23vh)
-  { text: 'marketing', radiusX: '23vw', radiusY: '23vh', initialAngle: 90, duration: 45 },
-  { text: 'sponsorships', radiusX: '23vw', radiusY: '23vh', initialAngle: 270, duration: 45 }
+  { text: 'esports', isPrimary: true },
+  { text: 'technical', isPrimary: true },
+  { text: 'production', isPrimary: false },
+  { text: 'design', isPrimary: false },
+  { text: 'game development', isPrimary: true },
+  { text: 'content creation', isPrimary: false },
+  { text: 'marketing', isPrimary: false },
+  { text: 'sponsorships', isPrimary: false }
 ];
 
 export default function LogoGateway({ onEnterApp }) {
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
+  const [positions, setPositions] = useState([]);
 
   const canvasRef = useRef(null);
   const hoverParticlesRef = useRef([]);
@@ -135,12 +131,131 @@ export default function LogoGateway({ onEnterApp }) {
     };
   }, [isHovered, isClicked]);
 
+  // Dynamic, collision-free random placement of words on mount and screen resize
+  useEffect(() => {
+    const calculatePositions = () => {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      
+      const isMobile = W < 768;
+      const logoW = isMobile ? 220 : 360;
+      const logoH = isMobile ? 220 : 360;
+      
+      // Bounding box for the center logo area
+      const logoBox = {
+        minX: -logoW / 2,
+        maxX: logoW / 2,
+        minY: -logoH / 2,
+        maxY: logoH / 2
+      };
+
+      const placedBoxes = [];
+      const newPositions = [];
+
+      for (let i = 0; i < FLOATING_WORDS.length; i++) {
+        const word = FLOATING_WORDS[i];
+        
+        // Estimate dimensions of the word
+        const charWidth = isMobile ? 7 : 10;
+        const fontSize = word.isPrimary ? (isMobile ? 12 : 14) : (isMobile ? 10 : 12);
+        const tracking = word.isPrimary ? 1.45 : 1.35;
+        const width = word.text.length * charWidth * tracking;
+        const height = fontSize * 2.5; // add padding for spacing
+
+        let placed = false;
+        let attempts = 0;
+        const maxAttempts = 200;
+
+        while (!placed && attempts < maxAttempts) {
+          attempts++;
+
+          // Random position on screen, leaving a margin at the edges
+          const marginX = isMobile ? 20 : 50;
+          const marginY = isMobile ? 45 : 85;
+          
+          // Position relative to center
+          const x = (Math.random() * (W - width - 2 * marginX)) - W / 2 + marginX + width / 2;
+          const y = (Math.random() * (H - height - 2 * marginY)) - H / 2 + marginY + height / 2;
+
+          const box = {
+            minX: x - width / 2,
+            maxX: x + width / 2,
+            minY: y - height / 2,
+            maxY: y + height / 2
+          };
+
+          // Check overlap with logo
+          const overlapsLogo = !(
+            box.maxX < logoBox.minX ||
+            box.minX > logoBox.maxX ||
+            box.maxY < logoBox.minY ||
+            box.minY > logoBox.maxY
+          );
+
+          if (overlapsLogo) continue;
+
+          // Check overlap with already placed words
+          let overlapsOther = false;
+          // Add a safety buffer between words
+          const bufferX = isMobile ? 12 : 30;
+          const bufferY = isMobile ? 8 : 16;
+          
+          for (const other of placedBoxes) {
+            const overlap = !(
+              box.maxX + bufferX < other.minX ||
+              box.minX - bufferX > other.maxX ||
+              box.maxY + bufferY < other.minY ||
+              box.minY - bufferY > other.maxY
+            );
+            if (overlap) {
+              overlapsOther = true;
+              break;
+            }
+          }
+
+          if (overlapsOther) continue;
+
+          // Found a valid position!
+          placedBoxes.push(box);
+          newPositions.push({
+            ...word,
+            x,
+            y,
+            // Stagger animation delays randomly so they float differently
+            floatDelay: -(Math.random() * 6).toFixed(2)
+          });
+          placed = true;
+        }
+
+        // Fallback if we couldn't place it after maxAttempts (unlikely)
+        if (!placed) {
+          const angle = (i * (360 / FLOATING_WORDS.length)) * Math.PI / 180;
+          const fallbackRadius = isMobile ? Math.min(W, H) * 0.38 : Math.min(W, H) * 0.42;
+          newPositions.push({
+            ...word,
+            x: Math.cos(angle) * fallbackRadius,
+            y: Math.sin(angle) * fallbackRadius,
+            floatDelay: -(Math.random() * 6).toFixed(2)
+          });
+        }
+      }
+
+      setPositions(newPositions);
+    };
+
+    calculatePositions();
+
+    // Recalculate on window resize to keep layout proportional and correct
+    window.addEventListener('resize', calculatePositions);
+    return () => window.removeEventListener('resize', calculatePositions);
+  }, []);
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-transparent flex items-center justify-center">
       
       {/* Floating Concentric Symmetrical Words */}
       <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden select-none">
-        {FLOATING_WORDS.map((word, idx) => {
+        {positions.map((word, idx) => {
           // If clicked, they fade out cleanly in place instead of merging together
           if (isClicked) {
             return (
@@ -170,38 +285,36 @@ export default function LogoGateway({ onEnterApp }) {
             );
           }
 
-          // Calculate static positions based on initialAngle, radiusX, and radiusY
-          const angleRad = (word.initialAngle * Math.PI) / 180;
-          const x = Math.cos(angleRad) * parseFloat(word.radiusX);
-          const y = Math.sin(angleRad) * parseFloat(word.radiusY);
-
-          // Stagger the floating animation so they don't float in perfect sync
-          const floatDelay = -((word.initialAngle / 360) * 6).toFixed(2);
-
           return (
             <div
               key={idx}
               className="absolute top-1/2 left-1/2 pointer-events-none"
               style={{
-                transform: `translate(calc(-50% + ${x}vw), calc(-50% + ${y}vh))`,
+                transform: `translate(calc(-50% + ${word.x}px), calc(-50% + ${word.y}px))`,
               }}
             >
-              <div
-                style={{
-                  animation: `word-float 6s ease-in-out infinite`,
-                  animationDelay: `${floatDelay}s`
-                }}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: word.isPrimary ? 1.0 : 0.5, scale: 1 }}
+                transition={{ duration: 0.8, delay: idx * 0.08 }}
               >
                 <div
-                  className={
-                    word.isPrimary
-                      ? "text-[12px] md:text-[14px] font-black uppercase tracking-[0.45em] text-white font-sans drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]"
-                      : "text-[10px] md:text-[12px] font-bold uppercase tracking-[0.35em] text-white/50 font-sans drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]"
-                  }
+                  style={{
+                    animation: `word-float 6s ease-in-out infinite`,
+                    animationDelay: `${word.floatDelay}s`
+                  }}
                 >
-                  {word.text}
+                  <div
+                    className={
+                      word.isPrimary
+                        ? "text-[12px] md:text-[14px] font-black uppercase tracking-[0.45em] text-white font-sans drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]"
+                        : "text-[10px] md:text-[12px] font-bold uppercase tracking-[0.35em] text-white/50 font-sans drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]"
+                    }
+                  >
+                    {word.text}
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
           );
         })}
