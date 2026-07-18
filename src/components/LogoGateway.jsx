@@ -131,7 +131,8 @@ export default function LogoGateway({ onEnterApp }) {
     };
   }, [isHovered, isClicked]);
 
-  // Dynamic, collision-free random placement of words on mount and screen resize
+  // Dynamic, collision-free randomized placement of words on mount and screen resize.
+  // Uses stratified angular sectors to guarantee they are evenly distributed all around the screen.
   useEffect(() => {
     const calculatePositions = () => {
       const W = window.innerWidth;
@@ -149,11 +150,19 @@ export default function LogoGateway({ onEnterApp }) {
         maxY: logoH / 2
       };
 
+      // Create 8 sectors (45 degrees each) and shuffle them to randomize word order
+      const sectors = [0, 1, 2, 3, 4, 5, 6, 7];
+      for (let s = sectors.length - 1; s > 0; s--) {
+        const rIdx = Math.floor(Math.random() * (s + 1));
+        [sectors[s], sectors[rIdx]] = [sectors[rIdx], sectors[s]];
+      }
+
       const placedBoxes = [];
       const newPositions = [];
 
       for (let i = 0; i < FLOATING_WORDS.length; i++) {
         const word = FLOATING_WORDS[i];
+        const sector = sectors[i];
         
         // Estimate dimensions of the word
         const charWidth = isMobile ? 7 : 10;
@@ -162,20 +171,37 @@ export default function LogoGateway({ onEnterApp }) {
         const width = word.text.length * charWidth * tracking;
         const height = fontSize * 2.5; // add padding for spacing
 
+        const minAngle = sector * 45;
+
+        // Margins to prevent words from touching the edges of the viewport
+        const marginX = isMobile ? 25 : 60;
+        const marginY = isMobile ? 45 : 85;
+
+        // Radii bounds for horizontal (X) and vertical (Y) dimensions
+        const minR_x = logoW / 2 + 15;
+        const maxR_x = Math.max(minR_x + 10, W / 2 - marginX - width / 2);
+        const minR_y = logoH / 2 + 15;
+        const maxR_y = Math.max(minR_y + 10, H / 2 - marginY - height / 2);
+
+        const dist_x = maxR_x - minR_x;
+        const dist_y = maxR_y - minR_y;
+
         let placed = false;
         let attempts = 0;
-        const maxAttempts = 200;
+        const maxAttempts = 150;
 
         while (!placed && attempts < maxAttempts) {
           attempts++;
 
-          // Random position on screen, leaving a margin at the edges
-          const marginX = isMobile ? 20 : 50;
-          const marginY = isMobile ? 45 : 85;
+          // Random angle within the 45-degree sector slice
+          const angle = minAngle + Math.random() * 45;
+          const angleRad = (angle * Math.PI) / 180;
           
-          // Position relative to center
-          const x = (Math.random() * (W - width - 2 * marginX)) - W / 2 + marginX + width / 2;
-          const y = (Math.random() * (H - height - 2 * marginY)) - H / 2 + marginY + height / 2;
+          // Random radius factor from logo boundary to screen boundary
+          const rFactor = 0.2 + Math.random() * 0.75;
+
+          const x = Math.cos(angleRad) * (minR_x + rFactor * dist_x);
+          const y = Math.sin(angleRad) * (minR_y + rFactor * dist_y);
 
           const box = {
             minX: x - width / 2,
@@ -221,20 +247,23 @@ export default function LogoGateway({ onEnterApp }) {
             ...word,
             x,
             y,
-            // Stagger animation delays randomly so they float differently
             floatDelay: -(Math.random() * 6).toFixed(2)
           });
           placed = true;
         }
 
-        // Fallback if we couldn't place it after maxAttempts (unlikely)
+        // Fallback if we couldn't place it after maxAttempts in that sector
         if (!placed) {
-          const angle = (i * (360 / FLOATING_WORDS.length)) * Math.PI / 180;
-          const fallbackRadius = isMobile ? Math.min(W, H) * 0.38 : Math.min(W, H) * 0.42;
+          const angle = sector * 45 + 22.5;
+          const angleRad = (angle * Math.PI) / 180;
+          const rFactor = 0.55;
+          const x = Math.cos(angleRad) * (minR_x + rFactor * dist_x);
+          const y = Math.sin(angleRad) * (minR_y + rFactor * dist_y);
+          
           newPositions.push({
             ...word,
-            x: Math.cos(angle) * fallbackRadius,
-            y: Math.sin(angle) * fallbackRadius,
+            x,
+            y,
             floatDelay: -(Math.random() * 6).toFixed(2)
           });
         }
