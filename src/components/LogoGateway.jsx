@@ -261,7 +261,7 @@ export default function LogoGateway({ onEnterApp }) {
             return (
               <motion.div
                 key={idx}
-                initial={{ opacity: word.isPrimary ? 1.0 : 0.6 }}
+                initial={{ opacity: 1.0 }}
                 animate={{
                   opacity: 0,
                   scale: 0.8,
@@ -277,7 +277,7 @@ export default function LogoGateway({ onEnterApp }) {
                 className={
                   word.isPrimary
                     ? "text-[13px] md:text-[15px] font-black uppercase tracking-[0.45em] text-white font-sans drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]"
-                    : "text-[11px] md:text-[13px] font-bold uppercase tracking-[0.35em] text-white/60 font-sans drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]"
+                    : "text-[11px] md:text-[13px] font-bold uppercase tracking-[0.35em] text-white font-sans drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]"
                 }
               >
                 {word.text}
@@ -295,7 +295,7 @@ export default function LogoGateway({ onEnterApp }) {
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: word.isPrimary ? 1.0 : 0.5, scale: 1 }}
+                animate={{ opacity: 1.0, scale: 1 }}
                 transition={{ duration: 0.8, delay: idx * 0.08 }}
               >
                 <div
@@ -308,7 +308,7 @@ export default function LogoGateway({ onEnterApp }) {
                     className={
                       word.isPrimary
                         ? "text-[12px] md:text-[14px] font-black uppercase tracking-[0.45em] text-white font-sans drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]"
-                        : "text-[10px] md:text-[12px] font-bold uppercase tracking-[0.35em] text-white/50 font-sans drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]"
+                        : "text-[10px] md:text-[12px] font-bold uppercase tracking-[0.35em] text-white font-sans drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]"
                     }
                   >
                     {word.text}
