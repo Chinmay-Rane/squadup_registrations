@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #B00020;
+  --color-accent: #FF2D55;
+  --color-dark: #050505;
+  --font-sans: 'Space Grotesk', 'Geist', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom Base Styles */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #050505;
+  color: #ffffff;
+  font-family: 'Space Grotesk', 'Geist', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 30px 4px rgba(176, 0, 32, 0.4);
+    filter: drop-shadow(0 0 10px rgba(176, 0, 32, 0.3));
+  }
+  50% {
+    box-shadow: 0 0 50px 10px rgba(255, 45, 85, 0.6);
+    filter: drop-shadow(0 0 20px rgba(255, 45, 85, 0.5));
+  }
+}
+
+@keyframes subtle-breathing {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.1);
+  }
+}
+
+@keyframes ripple-effect {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(6);
+    opacity: 0;
+  }
+}
+
+/* Premium Glow & Shadow classes */
+.logo-glow-normal {
+  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 20px rgba(0, 0, 0, 0.8));
+  transition: filter 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.logo-glow-hover {
+  filter: drop-shadow(0 0 25px rgba(255, 45, 85, 0.8)) drop-shadow(0 0 50px rgba(176, 0, 32, 0.6));
+}
+
+.glow-text-primary {
+  text-shadow: 0 0 12px rgba(176, 0, 32, 0.6), 0 0 24px rgba(176, 0, 32, 0.3);
+}
+
+.glow-text-accent {
+  text-shadow: 0 0 12px rgba(255, 45, 85, 0.6), 0 0 24px rgba(255, 45, 85, 0.3);
+}
+
+/* Premium Glassmorphism Cards */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 64px 0 rgba(0, 0, 0, 0.7);
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02), rgba(176, 0, 32, 0.1));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  color: white;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 45, 85, 0.5);
+  box-shadow: 0 0 20px rgba(255, 45, 85, 0.15), inset 0 0 10px rgba(255, 45, 85, 0.05);
+  outline: none;
+}
+
+.glass-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.6)' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+}
+
+/* Animations */
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-breath {
+  animation: subtle-breathing 4s ease-in-out infinite;
+}
+
+/* Energy core pulse ripple */
+.energy-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 2px solid #FF2D55;
+  box-shadow: 0 0 30px rgba(255, 45, 85, 0.8), inset 0 0 30px rgba(255, 45, 85, 0.4);
+  animation: ripple-effect 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 45, 85, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 45, 85, 0.5);
+}
+
+/* Orbit Animations for Planetary Drift */
+@keyframes orbit-rotate {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes counter-rotate {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.orbit-parent {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+}
+
+.orbit-child {
+  position: absolute;
+  white-space: nowrap;
+}
