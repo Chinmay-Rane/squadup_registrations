@@ -47,6 +47,19 @@ export default function RegistrationForm() {
     };
     
     fetchSchema();
+
+    const recordView = async () => {
+      if (!localStorage.getItem('squadup_has_viewed')) {
+        localStorage.setItem('squadup_has_viewed', 'true');
+        try {
+          await supabase.rpc('increment_page_views');
+        } catch (err) {
+          console.error("Failed to record view", err);
+        }
+      }
+    };
+    
+    recordView();
   }, []);
 
   const handleChange = (fieldId, value) => {

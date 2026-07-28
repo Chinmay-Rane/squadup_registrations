@@ -17,9 +17,11 @@ export default function AdminPortal({ onBackToGateway }) {
   const [registrations, setRegistrations] = useState([]);
   const [memberFilter, setMemberFilter] = useState(true);
   const [formSchema, setFormSchema] = useState([]);
+  const [pageViews, setPageViews] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedReg, setSelectedReg] = useState(null);
+  const [pendingDeletions, setPendingDeletions] = useState([]);
   
   // Builder state
   const [draftSchema, setDraftSchema] = useState([]);
@@ -34,7 +36,7 @@ export default function AdminPortal({ onBackToGateway }) {
       // Fetch schema
       const { data: schemaData, error: schemaError } = await supabase
         .from('form_config')
-        .select('schema, department_info')
+        .select('schema, department_info, page_views')
         .eq('id', 1)
         .single();
         
@@ -42,6 +44,7 @@ export default function AdminPortal({ onBackToGateway }) {
       setFormSchema(schemaData.schema || []);
       setDraftSchema(schemaData.schema || []);
       setDraftDeptInfo(schemaData.department_info || '');
+      setPageViews(schemaData.page_views || 0);
 
       // Fetch registrations
       const { data: regData, error: regError } = await supabase
@@ -136,6 +139,41 @@ export default function AdminPortal({ onBackToGateway }) {
     worksheet['!cols'] = colWidths;
 
     XLSX.writeFile(workbook, `squadup_registrations_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleDelete = (reg) => {
+    if (!confirm("Are you sure you want to delete this entry?")) return;
+    
+    // Remove from local view immediately
+    setRegistrations(prev => prev.filter(r => r.id !== reg.id));
+    
+    // Set timer to permanently delete
+    const timer = setTimeout(async () => {
+      try {
+        await supabase.from('registrations').delete().eq('id', reg.id);
+      } catch (err) {
+        console.error("Failed to delete entry:", err);
+      }
+      setPendingDeletions(prev => prev.filter(p => p.id !== reg.id));
+    }, 7000); // 7 seconds to undo
+
+    setPendingDeletions(prev => [...prev, { id: reg.id, data: reg, timer }]);
+    setSelectedReg(null); // Close modal
+  };
+
+  const handleUndoDelete = (regId) => {
+    setPendingDeletions(prev => {
+      const pending = prev.find(p => p.id === regId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        // Put it back in the list, sorted by date
+        setRegistrations(regs => {
+          const newRegs = [pending.data, ...regs];
+          return newRegs.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+        });
+      }
+      return prev.filter(p => p.id !== regId);
+    });
   };
 
   // --- Builder Functions ---
@@ -287,10 +325,32 @@ export default function AdminPortal({ onBackToGateway }) {
 
               {/* DATA CENTER TAB */}
               {activeTab === 'data' && (() => {
-                const filteredRegistrations = registrations.filter(r => r.is_member === memberFilter);
+                // Filter out any pending deletions from the view just in case
+                const activeRegistrations = registrations.filter(r => !pendingDeletions.find(p => p.id === r.id));
+                const filteredRegistrations = activeRegistrations.filter(r => r.is_member === memberFilter);
                 
                 return (
                   <>
+                    {/* STATS OVERVIEW */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 shrink-0">
+                      <div className="bg-black/30 border border-white/5 p-4 rounded-xl flex flex-col justify-center">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Form Views</p>
+                        <p className="text-2xl font-extrabold text-white">{pageViews}</p>
+                      </div>
+                      <div className="bg-black/30 border border-white/5 p-4 rounded-xl flex flex-col justify-center">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Conversion</p>
+                        <p className="text-2xl font-extrabold text-white">{pageViews ? ((registrations.length / pageViews) * 100).toFixed(1) : 0}%</p>
+                      </div>
+                      <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl flex flex-col justify-center shadow-[0_0_15px_rgba(255,45,85,0.05)]">
+                        <p className="text-[10px] text-accent font-bold uppercase tracking-widest mb-1">Applied Members</p>
+                        <p className="text-2xl font-extrabold text-white">{registrations.filter(r => r.is_member).length}</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col justify-center">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Non-Members</p>
+                        <p className="text-2xl font-extrabold text-white">{registrations.filter(r => !r.is_member).length}</p>
+                      </div>
+                    </div>
+
                     <div className="flex gap-3 mb-4 shrink-0">
                       <button onClick={() => setMemberFilter(true)} className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${memberFilter ? 'bg-primary text-white shadow-[0_0_15px_rgba(255,45,85,0.3)]' : 'bg-black/30 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}>
                         SquadUP Members
@@ -480,9 +540,14 @@ export default function AdminPortal({ onBackToGateway }) {
                   </h3>
                   <p className="text-gray-500 text-xs mt-1">Submitted: {new Date(selectedReg.created_at).toLocaleString()}</p>
                 </div>
-                <button onClick={() => setSelectedReg(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => handleDelete(selectedReg)} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-full text-red-400 hover:text-red-300 transition-colors">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setSelectedReg(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
@@ -502,6 +567,30 @@ export default function AdminPortal({ onBackToGateway }) {
                 ))}
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Undo Delete Toast */}
+      <AnimatePresence>
+        {pendingDeletions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none"
+          >
+            {pendingDeletions.map(pending => (
+              <div key={pending.id} className="bg-[#111] backdrop-blur-md border border-white/20 p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-between gap-6 min-w-[300px] pointer-events-auto">
+                <p className="text-sm font-bold text-white">Entry deleted.</p>
+                <button 
+                  onClick={() => handleUndoDelete(pending.id)} 
+                  className="px-4 py-1.5 rounded-lg bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-gray-200 transition-colors"
+                >
+                  Undo
+                </button>
+              </div>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
