@@ -230,7 +230,7 @@ export default function RegistrationForm() {
               <button 
                 type="button" 
                 onClick={() => setShowDeptModal(true)}
-                className="mt-6 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-md transition-colors flex items-center gap-2"
+                className="mt-6 px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white bg-gradient-to-r from-primary/80 to-accent/80 hover:from-primary hover:to-accent border border-accent/30 rounded-md transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(255,45,85,0.3)] hover:shadow-[0_0_25px_rgba(255,45,85,0.5)]"
               >
                 Department Info
               </button>
@@ -311,17 +311,20 @@ export default function RegistrationForm() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg glass-panel rounded-[20px] p-6 md:p-8 max-h-[80vh] overflow-y-auto custom-scrollbar relative text-left"
+              className="w-full max-w-2xl glass-panel rounded-[20px] p-6 md:p-8 max-h-[85vh] overflow-y-auto custom-scrollbar relative text-left flex flex-col"
             >
-              <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-                <h3 className="text-xl font-bold text-white uppercase tracking-wider">
-                  Departments
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-white/10 pb-4 gap-4 shrink-0">
+                <h3 className="text-2xl font-extrabold tracking-tight text-white uppercase">
+                  SquadUP Departments
                 </h3>
-                <button onClick={() => setShowDeptModal(false)} className="p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors">
-                  <X className="w-4 h-4" />
+                <button 
+                  onClick={() => setShowDeptModal(false)} 
+                  className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/80 hover:text-white border border-white/20 hover:bg-white/10 rounded-md transition-all flex items-center gap-2"
+                >
+                  Back to Form
                 </button>
               </div>
-              <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed font-sans">
+              <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed font-sans flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 {departmentInfo || "No department information available at this time."}
               </div>
             </motion.div>
