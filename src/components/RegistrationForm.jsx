@@ -1,42 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-const YEARS = ['1st year', '2nd year', '3rd year', '4th year', '5th year', 'Other'];
-
-const DEPARTMENTS = [
-  'Events and Ops',
-  'Production',
-  'Media',
-  'Social media and marketing',
-  'Sponsorship',
-  'Technical',
-  'Design',
-  'Content creation'
-];
-
 export default function RegistrationForm() {
-  const [formData, setFormData] = useState({
-    name: '',
-    whatsAppNumber: '',
-    collegeEmail: '',
-    prn: '',
-    yearStudying: '',
-    course: '',
-    recommendedBy: '',
-    department: '',
-    pastExperience: ''
-  });
-
-  const [customYear, setCustomYear] = useState('');
+  const [formSchema, setFormSchema] = useState([]);
+  const [formData, setFormData] = useState({});
+  const [customYear, setCustomYear] = useState(''); // Kept for backwards compatibility with "Other" logic
+  
+  const [isLoadingSchema, setIsLoadingSchema] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    const fetchSchema = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('form_config')
+          .select('schema')
+          .eq('id', 1)
+          .single();
+          
+        if (error) throw error;
+        
+        if (data && data.schema) {
+          setFormSchema(data.schema);
+          
+          // Initialize form data state based on schema
+          const initialData = {};
+          data.schema.forEach(field => {
+            initialData[field.id] = '';
+          });
+          setFormData(initialData);
+        }
+      } catch (err) {
+        console.error("Failed to load form schema", err);
+        // Fallback to empty or we could hardcode the fallback
+      } finally {
+        setIsLoadingSchema(false);
+      }
+    };
+    
+    fetchSchema();
+  }, []);
+
+  const handleChange = (fieldId, value) => {
+    setFormData((prev) => ({ ...prev, [fieldId]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -44,27 +54,37 @@ export default function RegistrationForm() {
     setIsSubmitting(true);
 
     try {
-      const submittedYear = formData.yearStudying === 'Other' ? customYear : formData.yearStudying;
+      // Separate core fields (from original schema) from dynamic fields
+      const coreFields = ['name', 'whatsapp_number', 'college_email', 'prn', 'year_studying', 'course', 'recommended_by', 'department', 'past_experience'];
+      
+      const payload = {
+        dynamic_responses: {}
+      };
+      
+      // Special logic for "Other" year studying for backward compatibility
+      let finalYear = formData['year_studying'] || '';
+      if (finalYear === 'Other' && customYear) {
+        finalYear = customYear;
+      }
+
+      // Map dynamic form data back to columns or dynamic JSON
+      Object.keys(formData).forEach(key => {
+        if (coreFields.includes(key)) {
+          if (key === 'year_studying') {
+            payload[key] = finalYear;
+          } else {
+            payload[key] = formData[key];
+          }
+        } else {
+          payload.dynamic_responses[key] = formData[key];
+        }
+      });
       
       const { error } = await supabase
         .from('registrations')
-        .insert([
-          {
-            name: formData.name,
-            whatsapp_number: formData.whatsAppNumber,
-            college_email: formData.collegeEmail,
-            prn: formData.prn,
-            year_studying: submittedYear,
-            course: formData.course,
-            recommended_by: formData.recommendedBy,
-            department: formData.department,
-            past_experience: formData.pastExperience
-          }
-        ]);
+        .insert([payload]);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setTimeout(() => {
         setIsSubmitting(false);
@@ -75,7 +95,9 @@ export default function RegistrationForm() {
       console.error("Form submission failed", err);
       setTimeout(() => {
         setIsSubmitting(false);
-        setIsSuccess(true);
+        // We'll show success anyway to not block user, or we can show error
+        // But for this flow, let's keep it robust
+        alert("Submission failed. Please try again.");
       }, 1000);
     }
   };
@@ -85,27 +107,95 @@ export default function RegistrationForm() {
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.8,
-        ease: [0.16, 1, 0.3, 1],
-        when: 'beforeChildren',
-        staggerChildren: 0.05
-      }
+      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], when: 'beforeChildren', staggerChildren: 0.05 }
     },
-    exit: {
-      opacity: 0,
-      y: -15,
-      transition: { duration: 0.4, ease: 'easeIn' }
-    }
+    exit: { opacity: 0, y: -15, transition: { duration: 0.4, ease: 'easeIn' } }
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] }
-    }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
+  };
+
+  const renderField = (field) => {
+    const isFocused = focusedField === field.id;
+    
+    return (
+      <motion.div key={field.id} variants={itemVariants} className={`relative group ${field.type === 'long_text' ? 'col-span-1 md:col-span-2' : ''}`}>
+        <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${isFocused ? 'text-accent' : 'text-gray-400'}`}>
+          {field.label} {field.required && <span className="text-accent">*</span>}
+        </label>
+        
+        {field.type === 'short_text' && (
+          <input
+            required={field.required}
+            type="text"
+            value={formData[field.id] || ''}
+            onChange={(e) => handleChange(field.id, e.target.value)}
+            onFocus={() => setFocusedField(field.id)}
+            onBlur={() => setFocusedField(null)}
+            placeholder={field.placeholder || ''}
+            className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans"
+          />
+        )}
+
+        {field.type === 'long_text' && (
+          <textarea
+            required={field.required}
+            rows="3"
+            value={formData[field.id] || ''}
+            onChange={(e) => handleChange(field.id, e.target.value)}
+            onFocus={() => setFocusedField(field.id)}
+            onBlur={() => setFocusedField(null)}
+            placeholder={field.placeholder || ''}
+            className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans resize-none"
+          />
+        )}
+
+        {field.type === 'select' && (
+          <>
+            <select
+              required={field.required}
+              value={formData[field.id] || ''}
+              onChange={(e) => handleChange(field.id, e.target.value)}
+              onFocus={() => setFocusedField(field.id)}
+              onBlur={() => setFocusedField(null)}
+              className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input glass-select font-sans text-gray-300 focus:text-white"
+            >
+              <option value="" disabled className="bg-neutral-900 text-gray-500">Select...</option>
+              {field.options?.map((opt) => (
+                <option key={opt} value={opt} className="bg-neutral-900 text-white">{opt}</option>
+              ))}
+            </select>
+            
+            {/* Backward compatibility for specific "Other" logic in year_studying */}
+            <AnimatePresence>
+              {field.id === 'year_studying' && formData[field.id] === 'Other' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  className="overflow-hidden"
+                >
+                  <label className="block text-[9px] uppercase tracking-widest mb-1 font-bold text-accent">
+                    Specify Year <span className="text-accent">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={customYear}
+                    onChange={(e) => setCustomYear(e.target.value)}
+                    placeholder="e.g. 5th year, Alumnus"
+                    className="w-full px-4 py-2 text-sm rounded-[8px] glass-input font-sans"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+      </motion.div>
+    );
   };
 
   return (
@@ -120,13 +210,11 @@ export default function RegistrationForm() {
             exit="exit"
             className="w-full max-w-2xl glass-panel rounded-[20px] p-6 md:p-8 relative z-30 font-sans"
           >
-            {/* Minimal Header */}
             <motion.div variants={itemVariants} className="mb-8 text-left border-b border-white/5 pb-4">
-              <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase">
-                Join SquadUP ( Phase 0 )
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white uppercase">
+                Join SquadUP ( Phase 01 )
               </h2>
-              {/* Pillar Subheadings */}
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] md:text-xs font-semibold uppercase tracking-[0.2em] text-accent">
                 <span>Build.</span>
                 <span className="text-white/20">•</span>
                 <span>Create.</span>
@@ -137,221 +225,34 @@ export default function RegistrationForm() {
               </div>
             </motion.div>
 
-            {/* Form Fields */}
-            <form onSubmit={handleSubmit} className="space-y-5 text-left">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Name */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'name' ? 'text-accent' : 'text-gray-400'}`}>
-                    Name
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('name')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="e.g. Chinmay Rane"
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans"
-                  />
-                </motion.div>
-
-                {/* WhatsApp Number */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'whatsAppNumber' ? 'text-accent' : 'text-gray-400'}`}>
-                    WhatsApp Number
-                  </label>
-                  <input
-                    required
-                    type="tel"
-                    name="whatsAppNumber"
-                    value={formData.whatsAppNumber}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('whatsAppNumber')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="e.g. +91 1234567890"
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans"
-                  />
-                </motion.div>
-
-                {/* College email id */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'collegeEmail' ? 'text-accent' : 'text-gray-400'}`}>
-                    College email id
-                  </label>
-                  <input
-                    required
-                    type="email"
-                    name="collegeEmail"
-                    value={formData.collegeEmail}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('collegeEmail')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="e.g. abcd12345@mitwpu.edu.in"
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans"
-                  />
-                </motion.div>
-
-                {/* PRN */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'prn' ? 'text-accent' : 'text-gray-400'}`}>
-                    PRN
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    name="prn"
-                    value={formData.prn}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('prn')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="e.g. 1234567890"
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans"
-                  />
-                </motion.div>
-
-                {/* Year Studying in */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'yearStudying' ? 'text-accent' : 'text-gray-400'}`}>
-                    Year Studying in
-                  </label>
-                  <select
-                    required
-                    name="yearStudying"
-                    value={formData.yearStudying}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('yearStudying')}
-                    onBlur={() => setFocusedField(null)}
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input glass-select font-sans text-gray-300 focus:text-white"
-                  >
-                    <option value="" disabled className="bg-neutral-900 text-gray-500">Select Year</option>
-                    {YEARS.map((y) => (
-                      <option key={y} value={y} className="bg-neutral-900 text-white">{y}</option>
-                    ))}
-                  </select>
-
-                  {/* Write-in custom year input if 'Other' is selected */}
-                  <AnimatePresence>
-                    {formData.yearStudying === 'Other' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                        animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className="overflow-hidden"
-                      >
-                        <label className="block text-[9px] uppercase tracking-widest mb-1 font-bold text-accent">
-                          Specify Year
-                        </label>
-                        <input
-                          required
-                          type="text"
-                          name="customYear"
-                          value={customYear}
-                          onChange={(e) => setCustomYear(e.target.value)}
-                          placeholder="e.g. 5th year, Alumnus"
-                          className="w-full px-4 py-2 text-sm rounded-[8px] glass-input font-sans"
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-
-                {/* Course studying in */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'course' ? 'text-accent' : 'text-gray-400'}`}>
-                    Course studying in
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    name="course"
-                    value={formData.course}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('course')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="e.g. B.Tech Computer Science"
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans"
-                  />
-                </motion.div>
-
-                {/* Recommended by */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'recommendedBy' ? 'text-accent' : 'text-gray-400'}`}>
-                    Recommended by
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    name="recommendedBy"
-                    value={formData.recommendedBy}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('recommendedBy')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="e.g. Senior Name, Instagram, etc."
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans"
-                  />
-                </motion.div>
-
-                {/* Department you are interest in */}
-                <motion.div variants={itemVariants} className="relative group">
-                  <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'department' ? 'text-accent' : 'text-gray-400'}`}>
-                    Department you are interest in
-                  </label>
-                  <select
-                    required
-                    name="department"
-                    value={formData.department}
-                    onChange={handleChange}
-                    onFocus={() => setFocusedField('department')}
-                    onBlur={() => setFocusedField(null)}
-                    className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input glass-select font-sans text-gray-300 focus:text-white"
-                  >
-                    <option value="" disabled className="bg-neutral-900 text-gray-500">Select Department</option>
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d} value={d} className="bg-neutral-900 text-white">{d}</option>
-                    ))}
-                  </select>
-                </motion.div>
+            {isLoadingSchema ? (
+              <div className="py-12 flex justify-center items-center">
+                <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin"></div>
               </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-5 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {formSchema.filter(f => f.type !== 'long_text').map(renderField)}
+                </div>
+                
+                {formSchema.filter(f => f.type === 'long_text').map(renderField)}
 
-              {/* Any past experience for the selected department */}
-              <motion.div variants={itemVariants} className="relative">
-                <label className={`block text-[10px] uppercase tracking-widest mb-1.5 font-bold transition-colors duration-300 ${focusedField === 'pastExperience' ? 'text-accent' : 'text-gray-400'}`}>
-                  Any past experience for the selected department
-                </label>
-                <textarea
-                  required
-                  name="pastExperience"
-                  rows="3"
-                  value={formData.pastExperience}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField('pastExperience')}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder="Describe your relevant projects, work experience, or past events..."
-                  className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans resize-none"
-                />
-              </motion.div>
-
-              {/* Submit Button */}
-              <motion.div variants={itemVariants} className="pt-4 flex justify-start">
-                <motion.button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="group relative px-6 py-3 rounded-[8px] bg-gradient-to-r from-primary to-accent text-white font-bold tracking-widest text-[10px] uppercase flex items-center gap-3 overflow-hidden shadow-[0_0_20px_rgba(176,0,32,0.3)] cursor-pointer hover:shadow-[0_0_30px_rgba(255,45,85,0.5)] active:scale-98 transition-all duration-300 disabled:opacity-50"
-                >
-                  <span className="relative z-10">
-                    {isSubmitting ? 'Transmitting...' : 'Begin Your Journey'}
-                  </span>
-                  {!isSubmitting && <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />}
-                </motion.button>
-              </motion.div>
-            </form>
+                <motion.div variants={itemVariants} className="pt-4 flex justify-start">
+                  <motion.button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="group relative px-6 py-3 rounded-[8px] bg-gradient-to-r from-primary to-accent text-white font-bold tracking-widest text-[10px] uppercase flex items-center gap-3 overflow-hidden shadow-[0_0_20px_rgba(176,0,32,0.3)] cursor-pointer hover:shadow-[0_0_30px_rgba(255,45,85,0.5)] active:scale-98 transition-all duration-300 disabled:opacity-50"
+                  >
+                    <span className="relative z-10">
+                      {isSubmitting ? 'Transmitting...' : 'Begin Your Journey'}
+                    </span>
+                    {!isSubmitting && <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />}
+                  </motion.button>
+                </motion.div>
+              </form>
+            )}
           </motion.div>
         ) : (
-          /* SUCCESS CARD */
           <motion.div
             key="success-card"
             initial={{ opacity: 0, scale: 0.97 }}
@@ -374,11 +275,9 @@ export default function RegistrationForm() {
             <h2 className="text-xl font-extrabold tracking-widest uppercase text-white glow-text-accent">
               TRANSMISSION COMPLETE
             </h2>
-
             <p className="text-xs text-gray-300 mt-4 leading-relaxed font-sans uppercase tracking-wider">
               Profile secured. The gateway is synchronized with our mainframe.
             </p>
-
             <p className="text-[9px] text-gray-400 mt-6 tracking-widest uppercase">
               Welcome to the Squad. Expect contact soon.
             </p>
