@@ -6,8 +6,9 @@ import * as XLSX from 'xlsx';
 
 export default function AdminPortal({ onBackToGateway }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [session, setSession] = useState(null);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [loginError, setLoginError] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   // Tabs
   const [activeTab, setActiveTab] = useState('data'); // 'data' or 'builder'
@@ -58,20 +59,44 @@ export default function AdminPortal({ onBackToGateway }) {
   };
 
   useEffect(() => {
-    if (isLoggedIn) {
-      fetchMainData();
-    }
-  }, [isLoggedIn]);
+    // Check active session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoggedIn(!!session);
+      if (session) fetchMainData();
+    });
 
-  const handleLoginSubmit = (e) => {
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsLoggedIn(!!session);
+      if (session) {
+        fetchMainData();
+      } else {
+        setRegistrations([]); // Clear data on logout
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (loginForm.email === 'admin@aids' && loginForm.password === 'dev@aids123') {
-      setIsLoggedIn(true);
-      setLoginError(false);
-    } else {
-      setLoginError(true);
-      setTimeout(() => setLoginError(false), 3000);
+    setLoginError('');
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginForm.email,
+        password: loginForm.password,
+      });
+      if (error) throw error;
+    } catch (err) {
+      setLoginError(err.message);
+      setTimeout(() => setLoginError(''), 4000);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
   // Helper to extract value since it could be a core column or in dynamic_responses
@@ -196,7 +221,7 @@ export default function AdminPortal({ onBackToGateway }) {
                 <label className="block text-[10px] uppercase tracking-widest mb-1.5 font-bold text-gray-400">Password</label>
                 <input required type="password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} placeholder="••••••••" className="w-full px-4 py-2.5 text-sm rounded-[8px] glass-input font-sans" />
               </div>
-              {loginError && <p className="text-xs text-accent font-bold tracking-wide">Access Denied.</p>}
+              {loginError && <p className="text-xs text-accent font-bold tracking-wide">Auth Error: {loginError}</p>}
               <div className="flex gap-4 pt-2">
                 <button type="submit" className="px-6 py-2.5 rounded-[8px] bg-gradient-to-r from-primary to-accent text-white font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(176,0,32,0.2)] hover:shadow-[0_0_25px_rgba(255,45,85,0.4)] transition-all duration-300">
                   <span>Authenticate</span> <LogIn className="w-3.5 h-3.5" />
@@ -244,7 +269,7 @@ export default function AdminPortal({ onBackToGateway }) {
                 <button onClick={fetchMainData} className="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5 text-white/70 hover:text-white font-bold text-[9px] uppercase tracking-widest flex items-center gap-2 transition-all">
                   <span>Refresh</span> <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                 </button>
-                <button onClick={() => setIsLoggedIn(false)} className="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5 text-white/70 hover:text-white font-bold text-[9px] uppercase tracking-widest flex items-center gap-2 transition-all">
+                <button onClick={handleLogout} className="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5 text-white/70 hover:text-white font-bold text-[9px] uppercase tracking-widest flex items-center gap-2 transition-all">
                   <span>Logout</span> <LogOut className="w-3 h-3" />
                 </button>
               </div>
