@@ -7,6 +7,8 @@ export default function RegistrationForm() {
   const [formSchema, setFormSchema] = useState([]);
   const [formData, setFormData] = useState({});
   const [customYear, setCustomYear] = useState(''); // Kept for backwards compatibility with "Other" logic
+  const [departmentInfo, setDepartmentInfo] = useState('');
+  const [showDeptModal, setShowDeptModal] = useState(false);
   
   const [isLoadingSchema, setIsLoadingSchema] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,14 +20,15 @@ export default function RegistrationForm() {
       try {
         const { data, error } = await supabase
           .from('form_config')
-          .select('schema')
+          .select('schema, department_info')
           .eq('id', 1)
           .single();
           
         if (error) throw error;
         
-        if (data && data.schema) {
-          setFormSchema(data.schema);
+        if (data) {
+          if (data.schema) setFormSchema(data.schema);
+          if (data.department_info) setDepartmentInfo(data.department_info);
           
           // Initialize form data state based on schema
           const initialData = {};
@@ -223,6 +226,14 @@ export default function RegistrationForm() {
                 <span className="text-white/20">•</span>
                 <span>Innovate.</span>
               </div>
+              
+              <button 
+                type="button" 
+                onClick={() => setShowDeptModal(true)}
+                className="mt-6 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-md transition-colors flex items-center gap-2"
+              >
+                Department Info
+              </button>
             </motion.div>
 
             {isLoadingSchema ? (
@@ -281,6 +292,39 @@ export default function RegistrationForm() {
             <p className="text-[9px] text-gray-400 mt-6 tracking-widest uppercase">
               Welcome to the Squad. Expect contact soon.
             </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Department Info Modal */}
+      <AnimatePresence>
+        {showDeptModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowDeptModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg glass-panel rounded-[20px] p-6 md:p-8 max-h-[80vh] overflow-y-auto custom-scrollbar relative text-left"
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                <h3 className="text-xl font-bold text-white uppercase tracking-wider">
+                  Departments
+                </h3>
+                <button onClick={() => setShowDeptModal(false)} className="p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed font-sans">
+                {departmentInfo || "No department information available at this time."}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

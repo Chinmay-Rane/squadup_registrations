@@ -21,6 +21,7 @@ export default function AdminPortal({ onBackToGateway }) {
   
   // Builder state
   const [draftSchema, setDraftSchema] = useState([]);
+  const [draftDeptInfo, setDraftDeptInfo] = useState('');
   const [isSavingSchema, setIsSavingSchema] = useState(false);
   const [editingFieldId, setEditingFieldId] = useState(null);
 
@@ -31,13 +32,14 @@ export default function AdminPortal({ onBackToGateway }) {
       // Fetch schema
       const { data: schemaData, error: schemaError } = await supabase
         .from('form_config')
-        .select('schema')
+        .select('schema, department_info')
         .eq('id', 1)
         .single();
         
       if (schemaError) throw schemaError;
       setFormSchema(schemaData.schema || []);
       setDraftSchema(schemaData.schema || []);
+      setDraftDeptInfo(schemaData.department_info || '');
 
       // Fetch registrations
       const { data: regData, error: regError } = await supabase
@@ -114,7 +116,7 @@ export default function AdminPortal({ onBackToGateway }) {
     try {
       const { error } = await supabase
         .from('form_config')
-        .update({ schema: draftSchema, updated_at: new Date().toISOString() })
+        .update({ schema: draftSchema, department_info: draftDeptInfo, updated_at: new Date().toISOString() })
         .eq('id', 1);
       
       if (error) throw error;
@@ -297,7 +299,21 @@ export default function AdminPortal({ onBackToGateway }) {
 
               {/* FORM BUILDER TAB */}
               {activeTab === 'builder' && (
-                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col md:flex-row gap-6">
+                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+                  {/* Department Info Text Editor */}
+                  <div className="w-full bg-black/30 rounded-xl p-6 border border-white/5">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Department Info Text</label>
+                    <p className="text-[10px] text-gray-500 mb-3">This text will be shown when users click the "Department info" button on the registration form.</p>
+                    <textarea 
+                      rows="4" 
+                      value={draftDeptInfo} 
+                      onChange={(e) => setDraftDeptInfo(e.target.value)}
+                      placeholder="Welcome to SquadUP! Here is info about departments..."
+                      className="w-full px-4 py-3 text-sm rounded-[8px] glass-input font-sans resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-6">
                   {/* Field List */}
                   <div className="w-full md:w-1/3 flex flex-col gap-3">
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Form Fields</h3>
@@ -391,6 +407,7 @@ export default function AdminPortal({ onBackToGateway }) {
                         Select a field to edit or create a new one.
                       </div>
                     )}
+                  </div>
                   </div>
                 </div>
               )}
