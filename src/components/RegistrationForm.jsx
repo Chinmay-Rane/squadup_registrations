@@ -147,6 +147,15 @@ export default function RegistrationForm() {
     exit: { opacity: 0, y: -15, transition: { duration: 0.4, ease: 'easeIn' } }
   };
 
+  const expandVariants = {
+    hidden: { opacity: 0, height: 0 },
+    visible: {
+      opacity: 1,
+      height: 'auto',
+      transition: { duration: 0.5, ease: 'easeOut', when: 'beforeChildren', staggerChildren: 0.05 }
+    }
+  };
+
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
@@ -297,9 +306,9 @@ export default function RegistrationForm() {
                 <AnimatePresence>
                   {wantsToJoin !== null && (
                     <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                      variants={expandVariants}
+                      initial="hidden"
+                      animate="visible"
                       className="space-y-5 overflow-hidden"
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
