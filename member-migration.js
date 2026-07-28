@@ -1,7 +1,8 @@
+import 'dotenv/config';
 import pkg from 'pg';
 const { Client } = pkg;
 
-const connectionString = "postgresql://postgres.lktgfyfayfubytsgydal:Chinm@y1210@@aws-1-ap-south-1.pooler.supabase.com:5432/postgres";
+const connectionString = process.env.DATABASE_URL;
 
 const client = new Client({
   connectionString,
