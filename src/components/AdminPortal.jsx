@@ -335,7 +335,7 @@ export default function AdminPortal({ onBackToGateway }) {
                   </div>
                 </>
                 );
-              })}
+              })()}
 
               {/* FORM BUILDER TAB */}
               {activeTab === 'builder' && (
