@@ -7,6 +7,7 @@ export default function RegistrationForm() {
   const [formSchema, setFormSchema] = useState([]);
   const [formData, setFormData] = useState({});
   const [customYear, setCustomYear] = useState(''); // Kept for backwards compatibility with "Other" logic
+  const [wantsToJoin, setWantsToJoin] = useState(null);
   const [departmentInfo, setDepartmentInfo] = useState('');
   const [showDeptModal, setShowDeptModal] = useState(false);
   
@@ -61,8 +62,18 @@ export default function RegistrationForm() {
       return;
     }
 
+    if (wantsToJoin === null) {
+      alert('Please select whether you want to join SquadUP as a member.');
+      return;
+    }
+
+    const activeFields = formSchema.filter(f => {
+      if (wantsToJoin === false && (f.id === 'department' || f.id === 'past_experience')) return false;
+      return true;
+    });
+
     // Manual Validation for Required Fields
-    const missingFields = formSchema.filter(field => field.required && !formData[field.id]);
+    const missingFields = activeFields.filter(field => field.required && !formData[field.id]);
     if (missingFields.length > 0) {
       alert(`Please fill out all required fields. Missing: ${missingFields.map(f => f.label).join(', ')}`);
       return;
@@ -81,6 +92,7 @@ export default function RegistrationForm() {
       const coreFields = ['name', 'whatsapp_number', 'college_email', 'prn', 'year_studying', 'course', 'recommended_by', 'department', 'past_experience'];
       
       const payload = {
+        is_member: wantsToJoin,
         dynamic_responses: {}
       };
       
@@ -258,24 +270,65 @@ export default function RegistrationForm() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5 text-left">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  {formSchema.filter(f => f.type !== 'long_text').map(renderField)}
-                </div>
                 
-                {formSchema.filter(f => f.type === 'long_text').map(renderField)}
-
-                <motion.div variants={itemVariants} className="pt-4 flex justify-start">
-                  <motion.button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="group relative px-6 py-3 rounded-[8px] bg-gradient-to-r from-primary to-accent text-white font-bold tracking-widest text-[10px] uppercase flex items-center gap-3 overflow-hidden shadow-[0_0_20px_rgba(176,0,32,0.3)] cursor-pointer hover:shadow-[0_0_30px_rgba(255,45,85,0.5)] active:scale-98 transition-all duration-300 disabled:opacity-50"
-                  >
-                    <span className="relative z-10">
-                      {isSubmitting ? 'Transmitting...' : 'Begin Your Journey'}
-                    </span>
-                    {!isSubmitting && <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />}
-                  </motion.button>
+                {/* Member Selection Toggle */}
+                <motion.div variants={itemVariants} className="bg-black/30 p-5 rounded-xl border border-white/5 mb-6">
+                  <label className="block text-xs font-bold text-white uppercase tracking-wider mb-4">
+                    Do you want to join SquadUP as a member? <span className="text-accent">*</span>
+                  </label>
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setWantsToJoin(true)}
+                      className={`flex-1 py-3 px-4 rounded-lg border text-xs font-bold tracking-widest uppercase transition-all ${wantsToJoin === true ? 'bg-primary border-primary text-white shadow-[0_0_15px_rgba(255,45,85,0.3)]' : 'bg-transparent border-white/20 text-gray-400 hover:border-white/40 hover:text-white'}`}
+                    >
+                      Yes, I want to join
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWantsToJoin(false)}
+                      className={`flex-1 py-3 px-4 rounded-lg border text-xs font-bold tracking-widest uppercase transition-all ${wantsToJoin === false ? 'bg-white/20 border-white/40 text-white' : 'bg-transparent border-white/20 text-gray-400 hover:border-white/40 hover:text-white'}`}
+                    >
+                      No, just registering
+                    </button>
+                  </div>
                 </motion.div>
+
+                <AnimatePresence>
+                  {wantsToJoin !== null && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                      className="space-y-5 overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {formSchema
+                          .filter(f => f.type !== 'long_text')
+                          .filter(f => wantsToJoin === true || (f.id !== 'department' && f.id !== 'past_experience'))
+                          .map(renderField)}
+                      </div>
+                      
+                      {formSchema
+                        .filter(f => f.type === 'long_text')
+                        .filter(f => wantsToJoin === true || (f.id !== 'department' && f.id !== 'past_experience'))
+                        .map(renderField)}
+
+                      <motion.div variants={itemVariants} className="pt-4 flex justify-start">
+                        <motion.button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="group relative px-6 py-3 rounded-[8px] bg-gradient-to-r from-primary to-accent text-white font-bold tracking-widest text-[10px] uppercase flex items-center gap-3 overflow-hidden shadow-[0_0_20px_rgba(176,0,32,0.3)] cursor-pointer hover:shadow-[0_0_30px_rgba(255,45,85,0.5)] active:scale-98 transition-all duration-300 disabled:opacity-50"
+                        >
+                          <span className="relative z-10">
+                            {isSubmitting ? 'Transmitting...' : 'Submit'}
+                          </span>
+                          {!isSubmitting && <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />}
+                        </motion.button>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </form>
             )}
           </motion.div>
@@ -306,7 +359,7 @@ export default function RegistrationForm() {
               Profile secured. The gateway is synchronized with our mainframe.
             </p>
             <p className="text-[9px] text-gray-400 mt-6 tracking-widest uppercase">
-              Welcome to the Squad. Expect contact soon.
+              {wantsToJoin ? "Welcome to the Squad. Expect contact soon." : "Thank you for registering. We look forward to seeing you!"}
             </p>
           </motion.div>
         )}

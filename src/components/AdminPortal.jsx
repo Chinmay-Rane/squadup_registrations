@@ -15,6 +15,7 @@ export default function AdminPortal({ onBackToGateway }) {
 
   // Data state
   const [registrations, setRegistrations] = useState([]);
+  const [memberFilter, setMemberFilter] = useState(true);
   const [formSchema, setFormSchema] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -116,6 +117,7 @@ export default function AdminPortal({ onBackToGateway }) {
     // Format data for Excel based on dynamic schema
     const formattedData = registrations.map(reg => {
       const row = {};
+      row['Type'] = reg.is_member ? 'Member' : 'Non-Member';
       formSchema.forEach(field => {
         row[field.label] = getFieldValue(reg, field.id) || '';
       });
@@ -128,7 +130,8 @@ export default function AdminPortal({ onBackToGateway }) {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Registrations");
 
     // Auto-size columns loosely
-    const colWidths = formSchema.map(f => ({ wch: f.type === 'long_text' ? 50 : 25 }));
+    const colWidths = [{ wch: 15 }]; // Type
+    formSchema.forEach(f => colWidths.push({ wch: f.type === 'long_text' ? 50 : 25 }));
     colWidths.push({ wch: 25 }); // Date
     worksheet['!cols'] = colWidths;
 
@@ -283,26 +286,37 @@ export default function AdminPortal({ onBackToGateway }) {
               )}
 
               {/* DATA CENTER TAB */}
-              {activeTab === 'data' && (
-                <>
-                  <div className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative">
-                    <table className="w-full text-left border-collapse text-sm whitespace-nowrap font-sans relative">
-                      <thead className="sticky top-0 bg-[#0a0a0a] z-10 shadow-md">
-                        <tr>
-                          {formSchema.map(field => (
-                            <th key={field.id} className="p-4 border-b border-white/10 text-xs font-bold text-gray-400 uppercase tracking-wider max-w-[200px] truncate">
-                              {field.label}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {loading && registrations.length === 0 ? (
+              {activeTab === 'data' && (() => {
+                const filteredRegistrations = registrations.filter(r => r.is_member === memberFilter);
+                
+                return (
+                  <>
+                    <div className="flex gap-3 mb-4 shrink-0">
+                      <button onClick={() => setMemberFilter(true)} className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${memberFilter ? 'bg-primary text-white shadow-[0_0_15px_rgba(255,45,85,0.3)]' : 'bg-black/30 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}>
+                        SquadUP Members
+                      </button>
+                      <button onClick={() => setMemberFilter(false)} className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${!memberFilter ? 'bg-white/20 border border-white/30 text-white' : 'bg-black/30 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}>
+                        Non-Members
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative">
+                      <table className="w-full text-left border-collapse text-sm whitespace-nowrap font-sans relative">
+                        <thead className="sticky top-0 bg-[#0a0a0a] z-10 shadow-md">
+                          <tr>
+                            {formSchema.map(field => (
+                              <th key={field.id} className="p-4 border-b border-white/10 text-xs font-bold text-gray-400 uppercase tracking-wider max-w-[200px] truncate">
+                                {field.label}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                        {loading && filteredRegistrations.length === 0 ? (
                           <tr><td colSpan={formSchema.length || 1} className="p-8 text-center text-gray-500">Fetching mainframe...</td></tr>
-                        ) : registrations.length === 0 ? (
-                          <tr><td colSpan={formSchema.length || 1} className="p-8 text-center text-gray-500">No registrations found.</td></tr>
+                        ) : filteredRegistrations.length === 0 ? (
+                          <tr><td colSpan={formSchema.length || 1} className="p-8 text-center text-gray-500">No {memberFilter ? 'members' : 'non-members'} found.</td></tr>
                         ) : (
-                          registrations.map((reg) => (
+                          filteredRegistrations.map((reg) => (
                             <tr key={reg.id} onClick={() => setSelectedReg(reg)} className="hover:bg-white/10 transition-colors group cursor-pointer">
                               {formSchema.map(field => (
                                 <td key={field.id} className="p-4 text-gray-300 truncate max-w-[150px]">
@@ -316,11 +330,12 @@ export default function AdminPortal({ onBackToGateway }) {
                     </table>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center text-xs text-gray-500 shrink-0">
-                    <p>Total Entries: {registrations.length}</p>
+                    <p>Total Entries: {filteredRegistrations.length}</p>
                     <p className="text-[10px] uppercase tracking-wider">Click any row to view full details</p>
                   </div>
                 </>
-              )}
+                );
+              })}
 
               {/* FORM BUILDER TAB */}
               {activeTab === 'builder' && (
