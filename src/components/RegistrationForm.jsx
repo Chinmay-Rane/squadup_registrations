@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronRight } from 'lucide-react';
-import { getActiveFormConfig } from '../config';
+import { supabase } from '../supabaseClient';
 
 const YEARS = ['1st year', '2nd year', '3rd year', '4th year', '5th year', 'Other'];
 
@@ -44,28 +44,27 @@ export default function RegistrationForm() {
     setIsSubmitting(true);
 
     try {
-      const { actionUrl, fields } = getActiveFormConfig();
       const submittedYear = formData.yearStudying === 'Other' ? customYear : formData.yearStudying;
       
-      const formBody = new URLSearchParams();
-      formBody.append(fields.name, formData.name);
-      formBody.append(fields.whatsAppNumber, formData.whatsAppNumber);
-      formBody.append(fields.collegeEmail, formData.collegeEmail);
-      formBody.append(fields.prn, formData.prn);
-      formBody.append(fields.yearStudying, submittedYear);
-      formBody.append(fields.course, formData.course);
-      formBody.append(fields.recommendedBy, formData.recommendedBy);
-      formBody.append(fields.department, formData.department);
-      formBody.append(fields.pastExperience, formData.pastExperience);
+      const { error } = await supabase
+        .from('registrations')
+        .insert([
+          {
+            name: formData.name,
+            whatsapp_number: formData.whatsAppNumber,
+            college_email: formData.collegeEmail,
+            prn: formData.prn,
+            year_studying: submittedYear,
+            course: formData.course,
+            recommended_by: formData.recommendedBy,
+            department: formData.department,
+            past_experience: formData.pastExperience
+          }
+        ]);
 
-      await fetch(actionUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formBody.toString()
-      });
+      if (error) {
+        throw error;
+      }
 
       setTimeout(() => {
         setIsSubmitting(false);
