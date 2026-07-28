@@ -68,7 +68,7 @@ export default function RegistrationForm() {
     }
 
     const activeFields = formSchema.filter(f => {
-      if (wantsToJoin === false && (f.id === 'department' || f.id === 'past_experience')) return false;
+      if (wantsToJoin === false && (f.id === 'department' || f.id === 'past_experience' || f.id === 'recommended_by')) return false;
       return true;
     });
 
@@ -314,13 +314,13 @@ export default function RegistrationForm() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {formSchema
                           .filter(f => f.type !== 'long_text')
-                          .filter(f => wantsToJoin === true || (f.id !== 'department' && f.id !== 'past_experience'))
+                          .filter(f => wantsToJoin === true || (f.id !== 'department' && f.id !== 'past_experience' && f.id !== 'recommended_by'))
                           .map(renderField)}
                       </div>
                       
                       {formSchema
                         .filter(f => f.type === 'long_text')
-                        .filter(f => wantsToJoin === true || (f.id !== 'department' && f.id !== 'past_experience'))
+                        .filter(f => wantsToJoin === true || (f.id !== 'department' && f.id !== 'past_experience' && f.id !== 'recommended_by'))
                         .map(renderField)}
 
                       <motion.div variants={itemVariants} className="pt-4 flex justify-start">
