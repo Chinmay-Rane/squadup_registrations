@@ -61,6 +61,19 @@ export default function RegistrationForm() {
       return;
     }
 
+    // Manual Validation for Required Fields
+    const missingFields = formSchema.filter(field => field.required && !formData[field.id]);
+    if (missingFields.length > 0) {
+      alert(`Please fill out all required fields. Missing: ${missingFields.map(f => f.label).join(', ')}`);
+      return;
+    }
+
+    // Manual validation for custom year if required
+    if (formData['year_studying'] === 'Other' && !customYear) {
+      alert('Please specify your year of studying.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -138,7 +151,6 @@ export default function RegistrationForm() {
         
         {field.type === 'short_text' && (
           <input
-            required={field.required}
             type="text"
             value={formData[field.id] || ''}
             onChange={(e) => handleChange(field.id, e.target.value)}
@@ -151,7 +163,6 @@ export default function RegistrationForm() {
 
         {field.type === 'long_text' && (
           <textarea
-            required={field.required}
             rows="3"
             value={formData[field.id] || ''}
             onChange={(e) => handleChange(field.id, e.target.value)}
@@ -165,7 +176,6 @@ export default function RegistrationForm() {
         {field.type === 'select' && (
           <>
             <select
-              required={field.required}
               value={formData[field.id] || ''}
               onChange={(e) => handleChange(field.id, e.target.value)}
               onFocus={() => setFocusedField(field.id)}
@@ -192,7 +202,6 @@ export default function RegistrationForm() {
                     Specify Year <span className="text-accent">*</span>
                   </label>
                   <input
-                    required
                     type="text"
                     value={customYear}
                     onChange={(e) => setCustomYear(e.target.value)}
